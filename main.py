@@ -3,6 +3,9 @@ import uasyncio as asyncio
 import urequests as requests
 from cosmic import CosmicUnicorn
 from picographics import PicoGraphics, DISPLAY_COSMIC_UNICORN as DISPLAY
+from breakout_bme68x import BreakoutBME68X
+from pimoroni_i2c import PimoroniI2C
+from pimoroni import BREAKOUT_GARDEN_I2C_PINS
 
 from networking import networking_task
 from brightness import brightness_task
@@ -73,7 +76,15 @@ async def display_task(device):
     HOLD_TIME = 0.5
     STEP_TIME = 0.05
 
+    i2c = PimoroniI2C(**BREAKOUT_GARDEN_I2C_PINS)
+    bme = BreakoutBME68X(i2c)
+
     shift = 0
+    page = 0
+    temperature = 0
+    pressure = 0
+    humidity = 0
+    gas_resistance = 0
 
     graphics = PicoGraphics(DISPLAY)
     width = CosmicUnicorn.WIDTH
@@ -81,6 +92,7 @@ async def display_task(device):
 
     graphics.set_font("bitmap8")
     last_time = time.ticks_ms()
+    last_time_page = time.ticks_ms()
 
     while True:
         # Find most wide destination in data
@@ -95,9 +107,11 @@ async def display_task(device):
         time_ms = time.ticks_ms()
 
         if state == STATE_PRE_SCROLL and time_ms - last_time > HOLD_TIME * 3 * 1000:
+            temperature, pressure, humidity, gas_resistance, status, gas_index, meas_index = bme.read()
             if msg_width >= width:
                 state = STATE_SCROLLING
             last_time = time_ms
+            continue
 
         if state == STATE_SCROLLING and time_ms - last_time > STEP_TIME * 1000:
             shift += 1
@@ -126,6 +140,39 @@ async def display_task(device):
             graphics.rectangle(width - time_width, 8*i, time_width, 8*i+8)
             graphics.set_pen(graphics.create_pen(200, 200, 200))
             graphics.text(d["departing"], width - time_width + 1, 8*i, -1, 1)
+
+        # draw footer
+        graphics.set_pen(graphics.create_pen(0, 0, 0))
+        graphics.rectangle(0, height - 8, width, height)
+        graphics.set_pen(graphics.create_pen(200, 200, 200))
+        if page == 0:
+            graphics.text("{:.1f}".format(temperature), 0, height - 7, -1, 1)
+            graphics.text("°C", 24, height - 7, -1, 1)
+        elif page == 1:
+            graphics.text("{:.0f}".format(pressure / 100), 0, height - 7, -1, 1)
+            graphics.text("h", 21, height - 7, -1, 1)
+            graphics.text("P", 25, height - 7, -1, 1)
+            graphics.text("a", 28, height - 7, -1, 1)
+        elif page == 2:
+            graphics.text("{:.1f}".format(humidity), 0, height - 7, -1, 1)
+            graphics.text("°", 25, height - 7, -1, 1)
+            graphics.line(24, height, 32, height - 8)
+            graphics.text("°", 29, height - 3, -1, 1)
+        elif page == 3:
+            graphics.text("{:.0f}".format(gas_resistance / 100), 0, height - 7, -1, 1)
+            graphics.text("k", 23, height - 7, -1, 1)
+            graphics.line(27, height - 1, 29, height - 1)
+            graphics.line(28, height - 1, 28, height - 2)
+            graphics.line(27, height - 2, 27, height - 6)
+            graphics.line(30, height - 1, 32, height - 1)
+            graphics.line(30, height - 1, 30, height - 2)
+            graphics.line(31, height - 2, 31, height - 6)
+            graphics.line(28, height - 7, 31, height - 7)
+
+        # iterate page after HOLD_TIME
+        if time_ms - last_time_page > HOLD_TIME * 6 * 1000:
+            page = (page + 1) % 4
+            last_time_page = time_ms
 
         # update the display
         device.update(graphics)
