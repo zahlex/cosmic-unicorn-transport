@@ -8,7 +8,7 @@ cu = CosmicUnicorn()
 
 def map_range(x):
     min_input = 10
-    max_input = 100
+    max_input = 130
     min_output = 0.1
     max_output = 1
 
