@@ -1,4 +1,5 @@
 import time
+import ntptime
 import uasyncio as asyncio
 import urequests as requests
 from cosmic import CosmicUnicorn
@@ -19,6 +20,17 @@ STATE_POST_SCROLL = 2
 state = STATE_PRE_SCROLL
 data = []
 
+def local_time():
+    # get current time in seconds since epoch
+    time_seconds = time.mktime(time.gmtime()) + 3600
+    # Set timezone offset to Berlin respecting daylight saving time after last sunday in march at 1:00 UTC until last sunday in october at 1:00 UTC
+    year, month, day, hour, minute, second, weekday, yearday = time.gmtime()
+    # check if we are past last sunday of march 1:00 UTC and before last sunday of october 1:00 UTC
+    if (month > 3 or (month == 3 and day > 31 - (weekday + 1) % 7 and hour >= 1)) and (month < 10 or (month == 10 and day < 31 - (weekday + 1) % 7 and hour < 1)):
+        time_seconds += 3600
+    # get time_seconds as tuple
+    return time.gmtime(time_seconds)
+
 async def requests_task():
     global data
 
@@ -28,6 +40,7 @@ async def requests_task():
             await asyncio.sleep(0.1)
             continue
 
+        ntptime.settime()
         new_data = []
 
         # Perform requests
@@ -38,7 +51,7 @@ async def requests_task():
                 response = r.json()
                 r.close()
 
-                now_tuple = [int(element) for element in time.gmtime(response["realtimeDataUpdatedAt"])[3:5]]
+                now_tuple = [int(element) for element in time.gmtime()[3:5]]
 
                 for d in response["departures"]:
                     name = d["direction"]
@@ -80,7 +93,7 @@ async def display_task(device):
     bme = BreakoutBME68X(i2c)
 
     shift = 0
-    page = 0
+    page = 4
     temperature = 0
     pressure = 0
     humidity = 0
@@ -168,10 +181,16 @@ async def display_task(device):
             graphics.line(30, height - 1, 30, height - 2)
             graphics.line(31, height - 2, 31, height - 6)
             graphics.line(28, height - 7, 31, height - 7)
+        elif page == 4 or page == 5:
+            # display time in center of footer
+            time_tuple = [int(element) for element in local_time()[3:5]]
+            time_str = "{:02d}:{:02d}".format(time_tuple[0], time_tuple[1])
+            time_width = graphics.measure_text(time_str, 1)
+            graphics.text(time_str, ((width - time_width) // 2) + 1, height - 7, -1, 1)
 
         # iterate page after HOLD_TIME
         if time_ms - last_time_page > HOLD_TIME * 6 * 1000:
-            page = (page + 1) % 4
+            page = (page + 1) % 6
             last_time_page = time_ms
 
         # update the display
