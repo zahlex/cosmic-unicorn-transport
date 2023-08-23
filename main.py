@@ -40,7 +40,11 @@ async def requests_task():
             await asyncio.sleep(0.1)
             continue
 
-        ntptime.settime()
+        try:
+            ntptime.settime()
+        except Exception as e:
+            print(e)
+
         new_data = []
 
         # Perform requests
@@ -199,14 +203,22 @@ async def display_task(device):
         await asyncio.sleep(0.1)
 
 async def main():
-    cu = CosmicUnicorn()
-    # Create and start both tasks
-    await asyncio.gather(
-        networking_task(),
-        brightness_task(cu),
-        display_task(cu),
-        requests_task(),
-    )
+    try:
+        cu = CosmicUnicorn()
+        # Create and start both tasks
+        await asyncio.gather(
+            networking_task(),
+            brightness_task(cu),
+            display_task(cu),
+            requests_task(),
+        )
+
+    except Exception as e:
+        print(e)
+
+    # run main again if something goes wrong
+    finally:
+        main()
 
 # Run the main event loop
 loop = asyncio.get_event_loop()
