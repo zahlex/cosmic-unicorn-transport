@@ -74,7 +74,7 @@ async def requests_task():
 
                     when_tuple = [int(element) for element in when.split("T")[1].split("+")[0][:-3].split(":")[:2]]
                     offset = int(when.split("T")[1].split("+")[1][:2])
-                    when = str((when_tuple[0] - ((now_tuple[0] + offset) % 24)) * 60 + (when_tuple[1] - now_tuple[1]))
+                    when = str(max((when_tuple[0] - ((now_tuple[0] + offset) % 24)), 0) * 60 + (when_tuple[1] - now_tuple[1]))
                 
                     color = d["line"]["color"]["bg"].replace("#", "")
 
