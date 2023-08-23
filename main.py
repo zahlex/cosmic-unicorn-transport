@@ -188,9 +188,11 @@ async def display_task(device):
         elif page == 4 or page == 5:
             # display time in center of footer
             time_tuple = [int(element) for element in local_time()[3:5]]
-            time_str = "{:02d}:{:02d}".format(time_tuple[0], time_tuple[1])
-            time_width = graphics.measure_text(time_str, 1)
-            graphics.text(time_str, ((width - time_width) // 2) + 1, height - 7, -1, 1)
+            time_str = "{:02d}".format(time_tuple[0])
+            graphics.text(time_str, 4, height - 7, -1, 1)
+            time_str = "{:02d}".format(time_tuple[1])
+            graphics.text(":", 16, height - 7, -1, 1)
+            graphics.text(time_str, 20, height - 7, -1, 1)
 
         # iterate page after HOLD_TIME
         if time_ms - last_time_page > HOLD_TIME * 6 * 1000:
