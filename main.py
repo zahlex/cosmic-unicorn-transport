@@ -23,11 +23,18 @@ data = []
 def local_time():
     # get current time in seconds since epoch
     time_seconds = time.mktime(time.gmtime()) + 3600
-    # Set timezone offset to Berlin respecting daylight saving time after last sunday in march at 1:00 UTC until last sunday in october at 1:00 UTC
+    # Set timezone offset to Berlin respecting daylight saving time 
+    # after last sunday in march at 1:00 UTC until last sunday of october at 1:00 UTC
     year, month, day, hour, minute, second, weekday, yearday = time.gmtime()
-    # check if we are past last sunday of march 1:00 UTC and before last sunday of october 1:00 UTC
-    if (month > 3 or (month == 3 and day > 31 - (weekday + 1) % 7 and hour >= 1)) and (month < 10 or (month == 10 and day < 31 - (weekday + 1) % 7 and hour < 1)):
+    
+    # check if we are past last sunday of march 1:00 UTC
+    past_march_sunday = (month > 3 or (month == 3 and day > 31 - (weekday + 1) % 7 and hour >= 1))
+    # check if we are before last sunday of october 1:00 UTC
+    before_october_sunday = (month < 10 or (month == 10 and day <= 31 - (weekday + 1) % 7 or (day == 31 - (weekday + 1) % 7 and hour < 1)))
+    
+    if past_march_sunday and before_october_sunday:
         time_seconds += 3600
+    
     # get time_seconds as tuple
     return time.gmtime(time_seconds)
 
